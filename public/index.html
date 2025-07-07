@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#ffb300" />
     <meta
       name="description"
@@ -37,14 +37,82 @@
         padding: 0;
         box-sizing: border-box;
       }
+      
+      /* Support for iPhone safe areas and viewport handling */
+      :root {
+        /* Fallback values for browsers that don't support env() */
+        --safe-area-inset-top: 0px;
+        --safe-area-inset-right: 0px;
+        --safe-area-inset-bottom: 0px;
+        --safe-area-inset-left: 0px;
+      }
+      
+      @supports (padding: env(safe-area-inset-top)) {
+        :root {
+          --safe-area-inset-top: env(safe-area-inset-top);
+          --safe-area-inset-right: env(safe-area-inset-right);
+          --safe-area-inset-bottom: env(safe-area-inset-bottom);
+          --safe-area-inset-left: env(safe-area-inset-left);
+        }
+      }
+      
       body {
         margin: 0;
         padding: 0;
+        /* Prevent horizontal scrolling on mobile */
+        overflow-x: hidden;
+        /* Better mobile handling without fixed positioning */
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+      }
+      
+      #root {
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+        width: 100%;
+      }
+      
+      /* Fix iOS Safari 100vh issue */
+      @media screen and (max-device-width: 812px) {
+        html {
+          height: -webkit-fill-available;
+        }
+        
+        body {
+          min-height: -webkit-fill-available;
+        }
+        
+        #root {
+          min-height: -webkit-fill-available;
+        }
       }
     </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
+    
+    <!-- Single Page Apps for GitHub Pages -->
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
+      // https://github.com/rafgraph/spa-github-pages
+      (function(l) {
+        if (l.search) {
+          var q = {};
+          l.search.slice(1).split('&').forEach(function(v) {
+            var a = v.split('=');
+            q[a[0]] = a.slice(1).join('=').replace(/~and~/g, '&');
+          });
+          if (q.p !== undefined) {
+            window.history.replaceState(null, null,
+              l.pathname.slice(0, -1) + (q.p || '') +
+              (q.q ? ('?' + q.q) : '') +
+              l.hash
+            );
+          }
+        }
+      }(window.location))
+    </script>
+    
     <div id="root"></div>
     <!--
       This HTML file is a template.

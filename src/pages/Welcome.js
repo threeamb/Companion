@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Container,
@@ -45,11 +45,20 @@ const Welcome = ({ onComplete, showWelcome: externalShowWelcome, onResetWelcome 
       icon: <WarningAmberOutlined sx={{ fontSize: 60, color: 'secondary.main' }} />,
     },
     {
-      title: 'Get Started',
-      content: 'Ready to dive in? Click the button below to begin your journey through the 3AMB ecosystem. You can always return to this guide later.',
+      title: 'Finish',
+      content: 'Ready to dive in? Click the button below to begin your journey through the 3AMB unit. You can always return to this guide later.',
       icon: <WavingHandOutlined sx={{ fontSize: 60, color: 'success.main' }} />,
     },
   ];
+
+  // Debug info for testing mobile layout
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 Welcome Screen Debug:');
+      console.log('To test Welcome screen, run: localStorage.removeItem("3amb-guidebook-visited"); window.location.reload();');
+      console.log('To test iPhone layout, use browser dev tools mobile simulation');
+    }
+  }, []);
 
   // Check if user has visited before or external control
   useEffect(() => {
@@ -138,6 +147,34 @@ const Welcome = ({ onComplete, showWelcome: externalShowWelcome, onResetWelcome 
     };
   }, [activeStep, showWelcome, isScrolling, steps.length]);
 
+  // Handle completion
+  const handleComplete = useCallback(() => {
+    // Mark as visited in localStorage
+    localStorage.setItem('3amb-guidebook-visited', 'true');
+    localStorage.setItem('3amb-guidebook-completed-date', new Date().toISOString());
+    
+    setIsVisible(false);
+    setTimeout(() => {
+      setShowWelcome(false);
+      if (onComplete) {
+        onComplete();
+      }
+    }, 300);
+  }, [onComplete]);
+
+  // Handle skip
+  const handleSkip = useCallback(() => {
+    localStorage.setItem('3amb-guidebook-visited', 'true');
+    localStorage.setItem('3amb-guidebook-skipped', 'true');
+    setIsVisible(false);
+    setTimeout(() => {
+      setShowWelcome(false);
+      if (onComplete) {
+        onComplete();
+      }
+    }, 300);
+  }, [onComplete]);
+
   // Handle keyboard navigation
   useEffect(() => {
     if (!showWelcome) return;
@@ -182,6 +219,10 @@ const Welcome = ({ onComplete, showWelcome: externalShowWelcome, onResetWelcome 
             setTimeout(() => setIsScrolling(false), 300);
           }
           break;
+          
+        default:
+          // No action for other keys
+          break;
       }
     };
 
@@ -190,7 +231,7 @@ const Welcome = ({ onComplete, showWelcome: externalShowWelcome, onResetWelcome 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeStep, showWelcome, isScrolling, steps.length]);
+  }, [activeStep, showWelcome, isScrolling, steps.length, handleComplete, handleSkip]);
 
   // Handle next step
   const handleNext = () => {
@@ -206,35 +247,8 @@ const Welcome = ({ onComplete, showWelcome: externalShowWelcome, onResetWelcome 
     setActiveStep(prev => prev - 1);
   };
 
-  // Handle completion
-  const handleComplete = () => {
-    // Mark as visited in localStorage
-    localStorage.setItem('3amb-guidebook-visited', 'true');
-    localStorage.setItem('3amb-guidebook-completed-date', new Date().toISOString());
-    
-    setIsVisible(false);
-    setTimeout(() => {
-      setShowWelcome(false);
-      if (onComplete) {
-        onComplete();
-      }
-    }, 300);
-  };
-
-  // Handle skip
-  const handleSkip = () => {
-    localStorage.setItem('3amb-guidebook-visited', 'true');
-    localStorage.setItem('3amb-guidebook-skipped', 'true');
-    setIsVisible(false);
-    setTimeout(() => {
-      setShowWelcome(false);
-      if (onComplete) {
-        onComplete();
-      }
-    }, 300);
-  };
-
   // Reset welcome (for testing - you can remove this)
+  // eslint-disable-next-line no-unused-vars
   const resetWelcome = () => {
     localStorage.removeItem('3amb-guidebook-visited');
     localStorage.removeItem('3amb-guidebook-completed-date');
@@ -266,6 +280,35 @@ const Welcome = ({ onComplete, showWelcome: externalShowWelcome, onResetWelcome 
         justifyContent: 'center',
         zIndex: 1300,
         backdropFilter: 'blur(5px)',
+        // iPhone safe area support
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+        // Ensure content is never cut off on mobile
+        minHeight: '100dvh', // Dynamic viewport height for better mobile support
+        // Additional padding for mobile devices with bottom bars
+        '@media (max-width: 768px)': {
+          paddingTop: 'max(env(safe-area-inset-top), 24px)',
+          paddingBottom: 'max(env(safe-area-inset-bottom), 24px)',
+          paddingLeft: 'max(env(safe-area-inset-left), 16px)',
+          paddingRight: 'max(env(safe-area-inset-right), 16px)',
+          // Ensure there's enough space for the content
+          minHeight: 'calc(100dvh - 48px)', // Dynamic viewport height
+        },
+        // Special handling for iPhone X and newer with notches and bottom bars
+        '@media (max-width: 480px) and (orientation: portrait)': {
+          paddingTop: 'max(env(safe-area-inset-top), 44px)', // iPhone status bar + extra
+          paddingBottom: 'max(env(safe-area-inset-bottom), 34px)', // iPhone home indicator + extra
+          minHeight: 'calc(100dvh - 78px)', // Dynamic viewport height
+        },
+        // For very small screens, ensure even more conservative spacing
+        '@media (max-width: 375px)': {
+          paddingTop: 'max(env(safe-area-inset-top), 50px)',
+          paddingBottom: 'max(env(safe-area-inset-bottom), 40px)',
+          paddingLeft: 'max(env(safe-area-inset-left), 12px)',
+          paddingRight: 'max(env(safe-area-inset-right), 12px)',
+        },
       }}
     >
       <Fade in={isVisible} timeout={500}>
@@ -277,6 +320,25 @@ const Welcome = ({ onComplete, showWelcome: externalShowWelcome, onResetWelcome 
               mx: 'auto',
               borderRadius: 3,
               overflow: 'hidden',
+              // Mobile optimizations
+              '@media (max-width: 768px)': {
+                mx: 1,
+                maxWidth: 'calc(100% - 16px)',
+                // Ensure card doesn't exceed available viewport height on mobile
+                maxHeight: 'calc(100dvh - 80px - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+                display: 'flex',
+                flexDirection: 'column',
+              },
+              // For iPhone and smaller screens
+              '@media (max-width: 480px) and (orientation: portrait)': {
+                maxHeight: 'calc(100dvh - 120px - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+                mx: 0.5,
+                maxWidth: 'calc(100% - 8px)',
+              },
+              // Very small screens
+              '@media (max-width: 375px)': {
+                maxHeight: 'calc(100dvh - 140px - env(safe-area-inset-top) - env(safe-area-inset-bottom))',
+              },
             }}
           >
             {/* Header with progress */}
@@ -324,7 +386,28 @@ const Welcome = ({ onComplete, showWelcome: externalShowWelcome, onResetWelcome 
             </Box>
 
             {/* Content */}
-            <CardContent sx={{ p: 4, minHeight: 400 }}>
+            <CardContent sx={{ 
+              p: 4, 
+              minHeight: 400,
+              // Mobile optimizations
+              '@media (max-width: 768px)': {
+                p: 3,
+                minHeight: 250, // Reduced min height for mobile
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+              },
+              // For very small screens, reduce padding and height further
+              '@media (max-width: 480px)': {
+                p: 2,
+                minHeight: 200,
+              },
+              '@media (max-width: 375px)': {
+                p: 1.5,
+                minHeight: 180,
+              },
+            }}>
               <Slide
                 direction="left"
                 in={true}
@@ -346,6 +429,12 @@ const Welcome = ({ onComplete, showWelcome: externalShowWelcome, onResetWelcome 
                       fontWeight: 'bold',
                       color: 'text.primary',
                       mb: 3,
+                      // Mobile optimizations
+                      '@media (max-width: 768px)': {
+                        variant: 'h5',
+                        fontSize: '1.5rem',
+                        mb: 2,
+                      },
                     }}
                   >
                     {steps[activeStep].title}
@@ -361,13 +450,28 @@ const Welcome = ({ onComplete, showWelcome: externalShowWelcome, onResetWelcome 
                       maxWidth: 500,
                       mx: 'auto',
                       mb: 4,
+                      // Mobile optimizations
+                      '@media (max-width: 768px)': {
+                        fontSize: '1rem',
+                        mb: 3,
+                        maxWidth: '100%',
+                      },
                     }}
                   >
                     {steps[activeStep].content}
                   </Typography>
 
                   {/* Step indicator dots */}
-                  <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 4 }}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    gap: 1, 
+                    mb: 4,
+                    // Mobile optimizations
+                    '@media (max-width: 768px)': {
+                      mb: 2,
+                    },
+                  }}>
                     {steps.map((_, index) => (
                       <Box
                         key={index}
@@ -393,6 +497,39 @@ const Welcome = ({ onComplete, showWelcome: externalShowWelcome, onResetWelcome 
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                // Mobile optimizations
+                '@media (max-width: 768px)': {
+                  p: 2,
+                  gap: 1.5,
+                  // Ensure buttons area is above iPhone bottom bar
+                  paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+                },
+                // For iPhone and small screens, improve button layout and spacing
+                '@media (max-width: 480px)': {
+                  p: 1.5,
+                  paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+                  gap: 1,
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  '& > button:nth-of-type(2)': {
+                    order: -1,
+                    fontSize: '0.75rem',
+                    padding: '4px 8px',
+                  },
+                },
+                // Very small screens - even more compact
+                '@media (max-width: 375px)': {
+                  p: 1,
+                  paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+                  '& > button': {
+                    fontSize: '0.8rem',
+                    padding: '6px 12px',
+                  },
+                  '& > button:nth-of-type(2)': {
+                    fontSize: '0.7rem',
+                    padding: '4px 6px',
+                  },
+                },
               }}
             >
               <Button
@@ -418,7 +555,7 @@ const Welcome = ({ onComplete, showWelcome: externalShowWelcome, onResetWelcome 
                 endIcon={activeStep === steps.length - 1 ? <WavingHandOutlined /> : <ArrowForward />}
                 size="large"
               >
-                {activeStep === steps.length - 1 ? 'Get Started' : 'Next'}
+                {activeStep === steps.length - 1 ? 'Finish' : 'Next'}
               </Button>
             </Box>
           </Card>

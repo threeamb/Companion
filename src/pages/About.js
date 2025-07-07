@@ -96,7 +96,7 @@ const About = () => {
   const lastUpdated = 'June 2025';
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4, px: { xs: 2, sm: 3 } }}>
+    <Container maxWidth="xl" sx={{ py: 4, px: { xs: 2, sm: 3 } }}>
       {/* Header Section */}
       <Box sx={{ mb: 6, textAlign: 'center' }}>
         <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
@@ -113,7 +113,7 @@ const About = () => {
       </Box>
 
       {/* Mission Statement */}
-      <Card elevation={3} sx={{ mb: 6 }} id="mission">
+      <Card elevation={3} sx={{ mb: 6, width: '100%', minWidth: '100%' }} id="mission">
         <CardContent sx={{ p: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
             <Info sx={{ mr: 2, color: 'primary.main', fontSize: '2rem' }} />
@@ -131,45 +131,48 @@ const About = () => {
             guidebook with customization and searchability at its core.
           </Typography>
         </CardContent>
-      </Card>
+        </Card>
 
-      {/* Features Grid */}
+      {/* Features Cards */}
       <Box sx={{ mb: 6 }} id="features">
         <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 'bold', mb: 4, textAlign: 'center' }}>
           Key Features
         </Typography>
-        <Grid container spacing={3}>
+        <Stack spacing={3}>
           {features.map((feature, index) => (
-            <Grid item xs={12} lg={6} key={index} sx={{ display: 'flex' }}>
-              <Card elevation={2} sx={{ 
-                height: '100%', 
-                minWidth: '100%',
-                transition: 'transform 0.2s', 
-                '&:hover': { transform: 'translateY(-4px)' } 
-              }}>
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
-                      {feature.icon}
-                    </Avatar>
-                    <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold' }}>
-                      {feature.title}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-                    {feature.description}
+            <Card elevation={2} key={index} sx={{ 
+              width: '100%',
+              minWidth: '100%',
+              maxWidth: '100%',
+              transition: 'transform 0.2s', 
+              '&:hover': { transform: 'translateY(-4px)' }
+            }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
+                    {feature.icon}
+                  </Avatar>
+                  <Typography variant="h6" component="h3" sx={{ fontWeight: 'bold' }}>
+                    {feature.title}
                   </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
+                </Box>
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary" 
+                  sx={{ lineHeight: 1.6 }}
+                >
+                  {feature.description}
+                </Typography>
+              </CardContent>
+            </Card>
           ))}
-        </Grid>
+        </Stack>
       </Box>
 
       {/* Technical Information */}
       <Grid container spacing={4} sx={{ mb: 6 }} id="tech-stack">
         <Grid item xs={12} sm={12} md={6}>
-          <Card elevation={2}>
+          <Card elevation={2} sx={{ width: '100%', minWidth: '100%', height: '100%' }}>
             <CardContent sx={{ p: 3 }}>
               <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
                 <Code sx={{ mr: 1 }} />
@@ -206,7 +209,7 @@ const About = () => {
         </Grid>
 
         <Grid item xs={12} md={6}>
-          <Card elevation={2}>
+          <Card elevation={2} sx={{ width: '100%', minWidth: '100%', height: '100%' }}>
             <CardContent sx={{ p: 3 }}>
               <Typography variant="h5" component="h3" gutterBottom sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
                 <Star sx={{ mr: 1 }} />

@@ -83,6 +83,7 @@ export const setupInstallPrompt = () => {
     return;
   }
 
+  // eslint-disable-next-line no-unused-vars
   let deferredPrompt = null;
 
   window.addEventListener('beforeinstallprompt', (e) => {

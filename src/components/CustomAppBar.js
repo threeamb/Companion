@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -7,7 +6,6 @@ import {
   Typography,
   Drawer,
   List,
-  ListItem,
   ListItemIcon,
   ListItemText,
   Box,
@@ -29,13 +27,20 @@ import {
   Settings,
   Help,
   WavingHand,
-  Upgrade,
   Search as SearchIcon,
   Close as CloseIcon,
+  Store,
+  Security,
+  PersonAdd,
+  MenuBook,
+  ClearAll,
+  GetApp,
 } from '@mui/icons-material';
 import PWAInstallButton from './PWAInstallButton';
+import NotificationIcon from './NotificationIcon';
+import { getAllGuidePages } from '../guidepages';
 
-function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
+function CustomAppBar({ onShowWelcome, onPageChange, onGuidePageChange, currentPage, onNavigateToTask }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,8 +48,39 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const searchContainerRef = useRef(null);
 
-  // Search index with scroll targets
-  const searchIndex = [
+  // Memoize the search index to prevent infinite re-renders
+  const searchIndex = useMemo(() => {
+    // Get guide pages for search index
+    const guidePages = getAllGuidePages();
+
+    // Map guide pages to search index format with appropriate icons
+    const getGuideIcon = (category) => {
+      switch (category) {
+        case 'Management':
+          return <Store />;
+        case 'Security':
+          return <Security />;
+        case 'HR':
+          return <PersonAdd />;
+        default:
+          return <MenuBook />;
+      }
+    };
+
+    const guideSearchItems = guidePages.map(guidePage => {
+      const { title, description, tags, category } = guidePage.metadata;
+      return {
+        page: 'guide',
+        title: title,
+        content: `${description} ${tags.join(' ')} ${category}`.toLowerCase(),
+        icon: getGuideIcon(category),
+        scrollTarget: 'top',
+        guidePage: guidePage // Store the guide page object for navigation
+      };
+    });
+
+    // Return the complete search index
+    return [
     // Home page 
     { 
       page: 'home', 
@@ -173,10 +209,24 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
       icon: <Help />,
       scrollTarget: 'top'
     },
-  ];
+    
+    // DS Checklist - specific entry for direct access
+    {
+      page: 'guide',
+      title: 'DS Checklist',
+      content: 'duty storeman checklist daily tasks store management opening closing inventory',
+      icon: <Store />,
+      scrollTarget: 'ds-checklist',
+      guidePage: guidePages.find(gp => gp.metadata.id === 'store-manager-duty') // Find the store management guide
+    },
+    
+    // Guide pages - dynamically added
+    ...guideSearchItems,
+    ];
+  }, []); // Empty dependency array since getAllGuidePages() is stable
 
   // Search function
-  const performSearch = (query) => {
+  const performSearch = useCallback((query) => {
     if (!query.trim()) {
       setSearchResults([]);
       return;
@@ -189,12 +239,12 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
     }).slice(0, 8); // Limit to 8 results
 
     setSearchResults(results);
-  };
+  }, [searchIndex]);
 
   // Update search results when query changes
   useEffect(() => {
     performSearch(searchQuery);
-  }, [searchQuery]);
+  }, [searchQuery, performSearch]);
 
   // Search button toggle handler
   const handleSearchToggle = (event) => {
@@ -217,7 +267,30 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
   const handleSearchResultClick = (result) => {
     handleSearchClose();
     setDrawerOpen(false);
-    if (onPageChange) {
+    
+    // Check if this is a guide page
+    if (result.page === 'guide' && result.guidePage && onGuidePageChange) {
+      onGuidePageChange(result.guidePage);
+      
+      // Handle scrolling to specific section within guide page
+      if (result.scrollTarget && result.scrollTarget !== 'top') {
+        setTimeout(() => {
+          const element = document.getElementById(result.scrollTarget);
+          if (element) {
+            element.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start',
+              inline: 'nearest'
+            });
+          }
+        }, 300); // Longer delay for guide page navigation
+      } else {
+        // Scroll to top if no specific target
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
+      }
+    } else if (onPageChange) {
       onPageChange(result.page);
       
       // Scroll to specific section after a short delay to allow page to load
@@ -256,6 +329,97 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
     setDrawerOpen(false);
     if (onPageChange) {
       onPageChange(page);
+    }
+  };
+
+  // Clear cache function for development
+  const handleClearCache = async () => {
+    try {
+      console.log('🧹 Starting comprehensive cache clearing...');
+      
+      // Clear localStorage
+      localStorage.clear();
+      console.log('✅ localStorage cleared');
+      
+      // Clear sessionStorage
+      sessionStorage.clear();
+      console.log('✅ sessionStorage cleared');
+      
+      // Clear indexedDB if available
+      if ('indexedDB' in window) {
+        try {
+          const databases = await indexedDB.databases?.();
+          if (databases) {
+            await Promise.all(databases.map(db => {
+              console.log(`🗄️ Deleting IndexedDB: ${db.name}`);
+              return indexedDB.deleteDatabase(db.name);
+            }));
+            console.log('✅ IndexedDB cleared');
+          }
+        } catch (dbError) {
+          console.warn('⚠️ IndexedDB clearing failed:', dbError);
+        }
+      }
+      
+      // Clear all service worker caches (PWA caches)
+      if ('caches' in window) {
+        try {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(cacheName => {
+            console.log(`🗂️ Deleting PWA cache: ${cacheName}`);
+            return caches.delete(cacheName);
+          }));
+          console.log('✅ All PWA caches cleared');
+        } catch (cacheError) {
+          console.warn('⚠️ Service Worker cache clearing failed:', cacheError);
+        }
+      }
+      
+      // Unregister service worker if present
+      if ('serviceWorker' in navigator) {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(registration => {
+            console.log('🔄 Unregistering service worker...');
+            return registration.unregister();
+          }));
+          console.log('✅ Service workers unregistered');
+        } catch (swError) {
+          console.warn('⚠️ Service worker unregistration failed:', swError);
+        }
+      }
+      
+      // Clear any remaining browser storage
+      try {
+        // Clear any cookies for this domain
+        document.cookie.split(";").forEach(cookie => {
+          const eqPos = cookie.indexOf("=");
+          const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+          document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+        });
+        console.log('✅ Cookies cleared');
+      } catch (cookieError) {
+        console.warn('⚠️ Cookie clearing failed:', cookieError);
+      }
+      
+      console.log('🎉 Cache clearing completed successfully!');
+      
+      // Show confirmation and reload
+      alert('🧹 All caches cleared!\n\n' +
+            '✅ localStorage & sessionStorage\n' +
+            '✅ IndexedDB databases\n' +
+            '✅ PWA service worker caches\n' +
+            '✅ Service worker registrations\n' +
+            '✅ Browser cookies\n\n' +
+            'Page will reload to apply changes...');
+      
+      // Force reload to ensure clean state
+      window.location.reload(true);
+      
+    } catch (error) {
+      console.error('❌ Error during cache clearing:', error);
+      alert('❌ Error clearing cache!\n\nCheck browser console for details.\n\n' +
+            'Some caches may have been partially cleared.');
     }
   };
 
@@ -317,6 +481,21 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
           {/* PWA Install Button */}
           <PWAInstallButton />
           
+          {/* Notification Icon */}
+          <NotificationIcon onNavigateToTask={onNavigateToTask} />
+          
+          {/* Clear Cache Button (Development only) */}
+          {process.env.NODE_ENV === 'development' && (
+            <IconButton
+              color="inherit"
+              onClick={handleClearCache}
+              title="Clear Cache (Dev)"
+              sx={{ ml: 1 }}
+            >
+              <ClearAll />
+            </IconButton>
+          )}
+          
           {/* Search functionality */}
           <Box 
             sx={{ 
@@ -331,18 +510,25 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
               <IconButton
                 color="inherit"
                 onClick={handleSearchToggle}
-                sx={{ mr: 1 }}
+                sx={{ 
+                  mr: 1,
+                  minWidth: { xs: 48, sm: 40 }, // Larger touch target on mobile
+                  minHeight: { xs: 48, sm: 40 },
+                }}
                 aria-label="search"
               >
-                <SearchIcon />
+                <SearchIcon sx={{ fontSize: { xs: '1.5rem', sm: '1.2rem' } }} />
               </IconButton>
             ) : (
-              <ClickAwayListener onClickAway={handleSearchClose}>
+              <ClickAwayListener 
+                onClickAway={handleSearchClose}
+                touchEvent="onTouchStart" // Better touch support
+              >
                 <Box sx={{ 
                   display: 'flex', 
                   alignItems: 'center',
                   width: '100%',
-                  maxWidth: 600,
+                  maxWidth: { xs: '100%', sm: 600 }, // Full width on mobile
                   justifyContent: 'center'
                 }}>
                   <TextField
@@ -358,6 +544,7 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
                       '& .MuiOutlinedInput-root': {
                         backgroundColor: 'rgba(255, 255, 255, 0.15)',
                         color: 'white',
+                        fontSize: { xs: '0.875rem', sm: '1rem' }, // Responsive font size
                         '& fieldset': {
                           borderColor: 'rgba(255, 255, 255, 0.3)',
                         },
@@ -368,16 +555,23 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
                           borderColor: 'rgba(255, 255, 255, 0.7)',
                         },
                       },
-                      '& .MuiInputBase-input::placeholder': {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        opacity: 1,
+                      '& .MuiInputBase-input': {
+                        padding: { xs: '8px 12px', sm: '8.5px 14px' }, // Responsive padding
+                        '&::placeholder': {
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          opacity: 1,
+                          fontSize: { xs: '0.875rem', sm: '1rem' },
+                        },
                       },
                     }}
                     slotProps={{
                       input: {
                         startAdornment: (
                           <InputAdornment position="start">
-                            <SearchIcon sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+                            <SearchIcon sx={{ 
+                              color: 'rgba(255, 255, 255, 0.7)',
+                              fontSize: { xs: '1.2rem', sm: '1.5rem' }
+                            }} />
                           </InputAdornment>
                         ),
                       }
@@ -387,8 +581,13 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
                     color="inherit"
                     onClick={handleSearchClose}
                     size="small"
+                    sx={{
+                      minWidth: { xs: 40, sm: 32 }, // Larger touch target on mobile
+                      minHeight: { xs: 40, sm: 32 },
+                      p: { xs: 1, sm: 0.5 },
+                    }}
                   >
-                    <CloseIcon />
+                    <CloseIcon sx={{ fontSize: { xs: '1.2rem', sm: '1rem' } }} />
                   </IconButton>
                 </Box>
               </ClickAwayListener>
@@ -405,7 +604,8 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
         transition
         sx={{ 
           zIndex: 1300,
-          width: 350,
+          width: { xs: '95vw', sm: 400, md: 450 }, // Responsive width
+          maxWidth: { xs: 'calc(100vw - 32px)', sm: 450 }, // Prevent overflow on mobile
         }}
         modifiers={[
           {
@@ -418,7 +618,13 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
             name: 'preventOverflow',
             options: {
               boundary: 'viewport',
-              padding: 16,
+              padding: { xs: 16, sm: 24 }, // More padding on mobile
+            },
+          },
+          {
+            name: 'flip',
+            options: {
+              fallbackPlacements: ['top', 'bottom-start', 'bottom-end'],
             },
           },
         ]}
@@ -428,31 +634,51 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
             <Paper
               elevation={8}
               sx={{
-                maxHeight: 400,
+                maxHeight: { xs: '60vh', sm: 400 }, // Responsive max height
                 overflow: 'auto',
                 border: 1,
-                borderColor: 'divider'
+                borderColor: 'divider',
+                width: '100%', // Take full width of Popper
+                mx: { xs: 2, sm: 0 }, // Margin on mobile
               }}
             >
-              <Box sx={{ p: 1 }}>
-                <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 1 }}>
+              <Box sx={{ p: { xs: 0.5, sm: 1 } }}> {/* Less padding on mobile */}
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary" 
+                  sx={{ 
+                    px: { xs: 1, sm: 2 }, 
+                    py: { xs: 0.5, sm: 1 },
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' } // Smaller text on mobile
+                  }}
+                >
                   Search Results ({searchResults.length})
                 </Typography>
-                <List dense>
+                <List dense sx={{ py: 0 }}>
                   {searchResults.map((result, index) => (
                     <ListItemButton
-                      key={index}
+                      key={`${result.type}-${result.page || result.id || index}`}
                       onClick={() => handleSearchResultClick(result)}
                       sx={{
                         borderRadius: 1,
                         mb: 0.5,
+                        mx: { xs: 0.5, sm: 0 }, // Less margin on mobile
+                        minHeight: { xs: 48, sm: 56 }, // Larger touch targets on mobile
                         '&:hover': {
                           backgroundColor: 'action.hover',
+                        },
+                        // Better touch feedback
+                        '&:active': {
+                          backgroundColor: 'action.selected',
                         },
                       }}
                     >
                       <ListItemAvatar>
-                        <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
+                        <Avatar sx={{ 
+                          bgcolor: 'primary.main', 
+                          width: { xs: 28, sm: 32 }, 
+                          height: { xs: 28, sm: 32 } 
+                        }}>
                           {result.icon}
                         </Avatar>
                       </ListItemAvatar>
@@ -462,10 +688,16 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
                         slotProps={{
                           primary: {
                             variant: 'body2',
-                            sx: { fontWeight: 'medium' }
+                            sx: { 
+                              fontWeight: 'medium',
+                              fontSize: { xs: '0.875rem', sm: '0.875rem' }
+                            }
                           },
                           secondary: {
-                            variant: 'caption'
+                            variant: 'caption',
+                            sx: {
+                              fontSize: { xs: '0.75rem', sm: '0.75rem' }
+                            }
                           }
                         }}
                       />
@@ -501,9 +733,9 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
         <Divider />
         
         <List>
-          {menuItems.map((item, index) => (
+          {menuItems.map((item) => (
             <ListItemButton
-              key={index}
+              key={item.page}
               onClick={() => {
                 item.action();
               }}
@@ -544,12 +776,42 @@ function CustomAppBar({ onShowWelcome, onPageChange, currentPage }) {
           </ListItemButton>
         </List>
 
+        <Divider />
+
+        {/* Clear Cache Section - Development Only */}
+        {process.env.NODE_ENV === 'development' && (
+          <List>
+            <ListItemButton onClick={handleClearCache}>
+              <ListItemIcon>
+                <ClearAll sx={{ color: 'error.main' }} />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Clear Cache"
+                secondary="Development: Clear local storage, session storage, and caches"
+              />
+            </ListItemButton>
+          </List>
+        )}
+
+        {/* PWA Installation Guide */}
+        <List>
+          <ListItemButton onClick={() => handlePageNavigation('pwa-install')}>
+            <ListItemIcon>
+              <GetApp sx={{ color: 'primary.main' }} />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Install App"
+              secondary="Learn how to install this app on your device"
+            />
+          </ListItemButton>
+        </List>
+
         <Box sx={{ flexGrow: 1 }} />
         
         {/* Footer in drawer */}
         <Box sx={{ p: 2, bgcolor: 'grey.50', mt: 'auto' }}>
           <Typography variant="caption" color="text.secondary">
-            3AMB Guidebook v1.0
+            3AMB Guidebook v1.2
           </Typography>
         </Box>
       </Drawer>
