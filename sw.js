@@ -1,9 +1,9 @@
 const CACHE_NAME = '3amb-guidebook-v1.1.0';
 const urlsToCache = [
-  '/guidebook/',
-  '/guidebook/static/js/bundle.js',
-  '/guidebook/static/css/main.css',
-  '/guidebook/manifest.json'
+  '/Companion/',
+  '/Companion/static/js/bundle.js',
+  '/Companion/static/css/main.css',
+  '/Companion/manifest.json'
 ];
 
 // Install event - cache resources
