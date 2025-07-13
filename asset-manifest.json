@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/Companion/static/css/main.060e8d75.css",
-    "main.js": "/Companion/static/js/main.3f0fe733.js",
+    "main.js": "/Companion/static/js/main.af2dd13b.js",
     "static/media/quicksand-latin-ext-400-normal.woff": "/Companion/static/media/quicksand-latin-ext-400-normal.1e5e50640be84762e1c2.woff",
     "static/media/quicksand-latin-400-normal.woff": "/Companion/static/media/quicksand-latin-400-normal.c483fecfa5b2b6081267.woff",
     "static/media/quicksand-latin-400-normal.woff2": "/Companion/static/media/quicksand-latin-400-normal.8d207fa27addbf026018.woff2",
@@ -12,6 +12,6 @@
   },
   "entrypoints": [
     "static/css/main.060e8d75.css",
-    "static/js/main.3f0fe733.js"
+    "static/js/main.af2dd13b.js"
   ]
 }
